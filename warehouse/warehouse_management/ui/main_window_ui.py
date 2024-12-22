@@ -1,26 +1,30 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, Menu
+from tkinter import ttk, messagebox, Menu, filedialog
 import datetime
 from .add_item_ui import add_item_window
 from .remove_item_ui import remove_item_window
 from .history_ui import display_history_window
 from .scrap_item_ui import scrap_item_window
-from ..report_generator import generate_report_window
+# 移除 report 相關的 import
+# from .report_window import ReportWindow
+# from ..report_generator import generate_report
+import openpyxl
+from openpyxl.styles import Alignment
+import os
 
 def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, logged_in_user):
-    # 倉庫選擇下拉選單
-    warehouse_var = tk.StringVar(value="全部")
     inventory_data = []  # Define inventory_data here
 
     # 使用 PanedWindow 分隔視窗
     paned_window = ttk.Panedwindow(window, orient=tk.VERTICAL)
-    paned_window.grid(row=2, column=0, columnspan=3, sticky='nsew', padx=10, pady=10)
+    paned_window.grid(row=2, column=0, columnspan=4, sticky='nsew', padx=10, pady=10)
 
     # 設定視窗可以彈性變動
     window.grid_rowconfigure(2, weight=1)
     window.grid_columnconfigure(0, weight=1)
     window.grid_columnconfigure(1, weight=1)
     window.grid_columnconfigure(2, weight=1)
+    window.grid_columnconfigure(3, weight=1)
 
     # Treeview for displaying inventory
     columns = ('name', 'quantity', 'expiry_date', 'warehouse', 'note')
@@ -35,7 +39,7 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
     inventory_tree.column('expiry_date', anchor=tk.CENTER)
     inventory_tree.column('warehouse', anchor=tk.CENTER)
     inventory_tree.column('note', anchor=tk.CENTER)
-    inventory_tree.grid(row=3, column=0, columnspan=3, padx=10, pady=10, sticky='nsew')
+    inventory_tree.grid(row=3, column=0, columnspan=4, padx=10, pady=10, sticky='nsew')
     paned_window.add(inventory_tree)
 
     filter_vars = {col: tk.StringVar() for col in columns}
@@ -63,11 +67,11 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
             filtered_data = get_visible_data(inventory_tree)
             create_filter_menu(col, event, filtered_data)
 
-    # 倉庫選擇下拉選單
-    warehouse_label = ttk.Label(window, text="選擇倉庫:")
-    warehouse_label.grid(row=0, column=0, padx=5, pady=5)
-    warehouse_combobox = ttk.Combobox(window, textvariable=warehouse_var, values=["全部","倉庫1", "倉庫2"])
-    warehouse_combobox.grid(row=0, column=1, padx=5, pady=5)
+    # 移除倉庫選擇下拉選單
+    # warehouse_label = ttk.Label(window, text="選擇倉庫:")
+    # warehouse_label.grid(row=0, column=0, padx=5, pady=5)
+    # warehouse_combobox = ttk.Combobox(window, textvariable=warehouse_var, values=["全部","倉庫1", "倉庫2"])
+    # warehouse_combobox.grid(row=0, column=1, padx=5, pady=5)
 
     # 創建按鈕
     add_button = ttk.Button(window, text="進貨", command=lambda: add_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
@@ -81,9 +85,10 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
 
     scrap_button = ttk.Button(window, text="報廢", command=lambda: scrap_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
     scrap_button.grid(row=1, column=3, padx=10, pady=10)
-
-    report_button = ttk.Button(window, text="生成報表", command=lambda: generate_report_window(window, warehouse1, warehouse2, history_log))
-    report_button.grid(row=1, column=4, padx=10, pady=10)
+    
+    # 移除 "生成報表" 按鈕
+    # report_button = ttk.Button(window, text="生成報表", command=lambda: export_report(window, warehouse1, warehouse2, history_log, logged_in_user))
+    # report_button.grid(row=1, column=4, padx=10, pady=10)
 
     def get_visible_data(tree):
         visible_data = []
@@ -95,14 +100,8 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
         inventory_tree.delete(*inventory_tree.get_children())
         nonlocal inventory_data
         inventory_data = []
-        selected_warehouse = warehouse_var.get()
-        if selected_warehouse == "全部":
-            inventory_data.extend(warehouse1.display_inventory())
-            inventory_data.extend(warehouse2.display_inventory())
-        elif selected_warehouse == "倉庫1":
-            inventory_data = warehouse1.display_inventory()
-        elif selected_warehouse == "倉庫2":
-            inventory_data = warehouse2.display_inventory()
+        inventory_data.extend(warehouse1.display_inventory())
+        inventory_data.extend(warehouse2.display_inventory())
 
         # Apply filters
         filtered_data = []
@@ -134,8 +133,6 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
         
         inventory_tree.tag_configure('expired', background='red')
         inventory_tree.tag_configure('warning', background='orange')
-
-    warehouse_var.trace("w", lambda *args: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree))
     
     update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree)
 

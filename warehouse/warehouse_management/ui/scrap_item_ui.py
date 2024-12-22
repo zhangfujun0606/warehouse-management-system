@@ -86,7 +86,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
     note_label.grid(row=4, column=0, padx=5, pady=5)
     note_entry = ttk.Entry(scrap_window)
     note_entry.grid(row=4, column=1, padx=5, pady=5)
-
+    
     scrap_items_list = []
 
     columns = ('name', 'expiry_date', 'quantity', 'warehouse', 'note') # Add warehouse column
@@ -148,7 +148,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
         quantity_entry.delete(0,'end')
         quantity_entry.insert(0,values[2])
         note_entry.delete(0,'end')
-        note_entry.insert(0,values[3])
+        note_entry.insert(0,values[4])
         
         item_tree.delete(selected_item)
         for item in scrap_items_list:
@@ -185,7 +185,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
             all_success = True
             if scrap_items_list:
                 if warehouse_name == "倉庫1":
-                    for name,expiry_date, quantity,note_item, warehouse_item in scrap_items_list:
+                    for name,expiry_date, quantity, warehouse_item, note_item in scrap_items_list:
                         result = warehouse1.remove_item(name, expiry_date, quantity)
                         if not result:
                             all_success = False
@@ -194,14 +194,13 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
                                 "type": "報廢",
                                 "name": name,
                                 "quantity": quantity,
-                                "expiry_date": expiry_date.strftime("%Y-%m-%d"),
                                 "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "user": logged_in_user,
                                 "note": note_item,
                                 "warehouse": warehouse_item
                             })
                 else:
-                    for name, expiry_date, quantity, note_item, warehouse_item in scrap_items_list:
+                    for name, expiry_date, quantity, warehouse_item, note_item in scrap_items_list:
                         result = warehouse2.remove_item(name, expiry_date, quantity)
                         if not result:
                             all_success = False
@@ -210,7 +209,6 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
                                 "type": "報廢",
                                 "name": name,
                                 "quantity": quantity,
-                                "expiry_date": expiry_date.strftime("%Y-%m-%d"),
                                 "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "user": logged_in_user,
                                 "note": note_item,

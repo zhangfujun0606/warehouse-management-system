@@ -56,7 +56,7 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
         else:
             expiry_date_combobox['values'] = []
             expiry_date_var.set("")
-
+    
     def update_remove_item_options(*args):
         warehouse_name = warehouse_var.get()
         if warehouse_name == "倉庫1":
@@ -65,13 +65,13 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
             names = warehouse2.get_item_names()
         name_combobox['values'] = names
         if names:
-          name_var.set(names[0])
-          update_expiry_options()
+           name_var.set(names[0])
+           update_expiry_options()
         else:
-          name_combobox['values'] = []
-          name_var.set("")
-          expiry_date_combobox['values'] = []
-          expiry_date_var.set("")
+            name_combobox['values'] = []
+            name_var.set("")
+            expiry_date_combobox['values'] = []
+            expiry_date_var.set("")
 
     name_var.trace('w', update_expiry_options)
     warehouse_var.trace("w", update_remove_item_options)
@@ -89,28 +89,27 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
 
     remove_items_list = []
 
-    columns = ('name', 'expiry_date', 'quantity', 'warehouse', 'note') # Add warehouse column
+    columns = ('name', 'expiry_date', 'quantity', 'warehouse', 'note')
     item_tree = ttk.Treeview(remove_window, columns=columns, show='headings')
     item_tree.heading('name', text='物品名稱')
     item_tree.heading('expiry_date', text='有效日期')
     item_tree.heading('quantity', text='數量')
-    item_tree.heading('warehouse', text='倉庫') # Add warehouse heading
+    item_tree.heading('warehouse', text='倉庫')
     item_tree.heading('note', text='備註')
     item_tree.column('name', anchor=tk.CENTER)
     item_tree.column('expiry_date', anchor=tk.CENTER)
     item_tree.column('quantity', anchor=tk.CENTER)
-    item_tree.column('warehouse', anchor=tk.CENTER) # Add warehouse column
+    item_tree.column('warehouse', anchor=tk.CENTER)
     item_tree.column('note', anchor=tk.CENTER)
     item_tree.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky='nsew')
-    
+
     def get_date_input(date_str):
         try:
             return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
         except ValueError:
-           messagebox.showerror("錯誤", "日期格式錯誤，請使用 YYYY-MM-DD")
-           return None
-
-
+            messagebox.showerror("錯誤", "日期格式錯誤，請使用 YYYY-MM-DD")
+            return None
+    
     def add_remove_item_to_list():
         name = name_var.get()
         expiry_date_str = expiry_date_var.get()
@@ -126,14 +125,14 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
         if not all([name, quantity, expiry_date]):
            messagebox.showerror("錯誤", "請填寫所有欄位")
            return
-            
+                
         try:
           quantity = int(quantity)
         except ValueError:
             messagebox.showerror("錯誤", "數量請輸入整數")
             return
 
-        remove_items_list.append((name,expiry_date,quantity, note, warehouse))
+        remove_items_list.append((name,expiry_date,quantity, warehouse, note))
         item_tree.insert('', 'end', values=(name, expiry_date.strftime('%Y-%m-%d'), quantity, warehouse, note))
         quantity_entry.delete(0, 'end')
         note_entry.delete(0,'end')
@@ -149,13 +148,13 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
         quantity_entry.delete(0,'end')
         quantity_entry.insert(0,values[2])
         note_entry.delete(0,'end')
-        note_entry.insert(0,values[3])
+        note_entry.insert(0,values[4])
         
         item_tree.delete(selected_item)
         for item in remove_items_list:
            if item[0] == values[0] and item[1] == get_date_input(values[1]) and item[2] == int(values[2]):
               remove_items_list.remove(item)
-    
+
     def delete_remove_item_list():
         selected_item = item_tree.selection()
         if not selected_item:
@@ -166,13 +165,13 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
             if item[0] == values[0] and item[1] == get_date_input(values[1]) and item[2] == int(values[2]):
                 remove_items_list.remove(item)
         item_tree.delete(selected_item)
-    
+
     button_frame = ttk.Frame(remove_window)
     button_frame.grid(row=6, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
-    
+
     add_to_list_button = ttk.Button(button_frame, text="新增", command=add_remove_item_to_list)
     add_to_list_button.pack(side="right", padx=5)
-
+    
     edit_to_list_button = ttk.Button(button_frame, text="修改", command=edit_remove_item_list)
     edit_to_list_button.pack(side="right", padx=5)
 
@@ -180,13 +179,13 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
     delete_to_list_button.pack(side="right", padx=5)
 
     def remove_item_action():
-        if messagebox.askyesno("確認", "確定要出貨嗎？"):
-            warehouse_name = warehouse_var.get()
-            note = note_entry.get()
-            all_success = True
-            if remove_items_list:
+      if messagebox.askyesno("確認", "確定要出貨嗎？"):
+          warehouse_name = warehouse_var.get()
+          note = note_entry.get()
+          all_success = True
+          if remove_items_list:
                 if warehouse_name == "倉庫1":
-                    for name,expiry_date, quantity,note_item, warehouse_item in remove_items_list:
+                    for name,expiry_date, quantity, warehouse_item, note_item  in remove_items_list:
                         result = warehouse1.remove_item(name, expiry_date, quantity)
                         if not result:
                             all_success = False
@@ -195,14 +194,13 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
                                 "type": "出貨",
                                 "name": name,
                                 "quantity": quantity,
-                                "expiry_date": expiry_date.strftime("%Y-%m-%d"),
                                 "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "user": logged_in_user,
                                 "note": note_item,
                                 "warehouse": warehouse_item
                             })
                 else:
-                    for name, expiry_date, quantity, note_item, warehouse_item in remove_items_list:
+                    for name, expiry_date, quantity, warehouse_item, note_item in remove_items_list:
                         result = warehouse2.remove_item(name, expiry_date, quantity)
                         if not result:
                             all_success = False
@@ -211,18 +209,16 @@ def remove_item_window(window, warehouse1, warehouse2, update_inventory, save_da
                                 "type": "出貨",
                                 "name": name,
                                 "quantity": quantity,
-                                "expiry_date": expiry_date.strftime("%Y-%m-%d"),
                                 "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                                 "user": logged_in_user,
                                 "note": note_item,
                                 "warehouse": warehouse_item
                             })
-
-            if all_success:
-                update_inventory()
-                save_data()
-                messagebox.showinfo("成功", "出貨成功")
-                remove_window.destroy()
+          if all_success:
+              update_inventory()
+              save_data()
+              messagebox.showinfo("成功", "出貨成功")
+              remove_window.destroy()
 
     remove_button = ttk.Button(button_frame, text="確認出貨", command=remove_item_action)
     remove_button.pack(side="right", padx=5)

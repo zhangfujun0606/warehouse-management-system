@@ -66,12 +66,18 @@ def add_item_window(window, warehouse1, warehouse2, update_inventory, save_data,
     add_items_list = []
     
      #TreeView
-    columns = ('name', 'expiry_date', 'quantity', 'note')
+    columns = ('name', 'expiry_date', 'quantity', 'warehouse', 'note')
     item_tree = ttk.Treeview(add_window, columns=columns, show='headings')
     item_tree.heading('name', text='物品名稱')
     item_tree.heading('expiry_date', text='有效日期')
     item_tree.heading('quantity', text='數量')
+    item_tree.heading('warehouse', text='倉庫')
     item_tree.heading('note', text='備註')
+    item_tree.column('name', anchor=tk.CENTER)
+    item_tree.column('expiry_date', anchor=tk.CENTER)
+    item_tree.column('quantity', anchor=tk.CENTER)
+    item_tree.column('warehouse', anchor=tk.CENTER)
+    item_tree.column('note', anchor=tk.CENTER)
     item_tree.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky='nsew')
     
     def get_date_input(date_str):
@@ -101,7 +107,7 @@ def add_item_window(window, warehouse1, warehouse2, update_inventory, save_data,
             return
         
         add_items_list.append(Item(name,quantity,expiry_date,note, warehouse))
-        item_tree.insert('', 'end', values=(name, expiry_date.strftime('%Y-%m-%d'), quantity, note))
+        item_tree.insert('', 'end', values=(name, expiry_date.strftime('%Y-%m-%d'), quantity, warehouse, note))
         
         quantity_entry.delete(0, 'end')
         note_entry.delete(0, 'end')

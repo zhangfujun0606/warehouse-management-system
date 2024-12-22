@@ -55,13 +55,12 @@ def display_history_window(window, history_log):
     paned_window.grid(row=2, column=0, columnspan=4, sticky='nsew', padx=10, pady=10)
 
     # Create filter Comboboxes
-    columns = ("type", "name", "quantity", "expiry_date", "time", "user", "warehouse", "note")
+    columns = ("type", "name", "quantity", "time", "user", "warehouse", "note")
     
     history_tree = ttk.Treeview(paned_window, columns=columns, show="headings", height=15)
     history_tree.heading("type", text="類型")
     history_tree.heading("name", text="品名")
     history_tree.heading("quantity", text="數量")
-    history_tree.heading("expiry_date", text="有效日期")
     history_tree.heading("time", text="時間")
     history_tree.heading("user", text="帳號")
     history_tree.heading("warehouse", text="倉庫")
@@ -69,7 +68,6 @@ def display_history_window(window, history_log):
     history_tree.column("type", anchor=tk.CENTER, width=80)
     history_tree.column("name", width=120, anchor=tk.CENTER)
     history_tree.column("quantity", width=80, anchor=tk.CENTER)
-    history_tree.column("expiry_date", width=100, anchor=tk.CENTER)
     history_tree.column("time", width=140, anchor=tk.CENTER)
     history_tree.column("user", width=80, anchor=tk.CENTER)
     history_tree.column("warehouse", width=80, anchor=tk.CENTER)
@@ -105,14 +103,13 @@ def display_history_window(window, history_log):
                     user_str = record.get('user') if 'user' in record else None
                     user_str = 'N/A' if user_str is None else user_str
                     history_tree.insert('', 'end', values=(
-                        record['type'],
-                        record['name'],
-                        record['quantity'],
-                        record['expiry_date'],
-                        record['time'],
+                        record.get('type', 'N/A'),
+                        record.get('name','N/A'),
+                        record.get('quantity','N/A'),
+                        record.get('time','N/A'),
                         user_str,
                         record.get('warehouse', 'N/A'),
-                        record['note']
+                        record.get('note','N/A')
                     ))
     
     def export_to_excel():
