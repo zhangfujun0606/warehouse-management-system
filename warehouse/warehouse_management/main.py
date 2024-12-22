@@ -5,6 +5,7 @@ from .login_module import login
 from .ui.main_window_ui import setup_main_window
 from .utils.data_handler import save_data, load_data
 from .item import Item
+from .ui.report_window import display_report_window
 
 # 創建兩個倉庫
 warehouse1 = Warehouse("倉庫1")

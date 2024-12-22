@@ -20,10 +20,10 @@ def login(window, load_data, setup_main_window):
     def check_login():
         username = username_entry.get()
         password = password_entry.get()
-        if username == "0510" and password == "0000":
+        if username == "A0510" and password == "0000":
             login_window.destroy()
             global logged_in_user
-            logged_in_user = "0510"
+            logged_in_user = "A0510"
             load_data()
             setup_main_window(logged_in_user)  # 傳遞 logged_in_user
         else:

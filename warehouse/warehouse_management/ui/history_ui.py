@@ -3,11 +3,11 @@ from tkinter import ttk, messagebox, filedialog
 import datetime
 import tkinter.font as tkFont
 from openpyxl import Workbook
-from reportlab.pdfgen import canvas
-from reportlab.lib.pagesizes import letter
-from reportlab.lib import colors
-from reportlab.pdfbase import pdfmetrics
-from reportlab.pdfbase.ttfonts import TTFont
+# from reportlab.pdfgen import canvas  移除 reportlab 相關的 import
+# from reportlab.lib.pagesizes import letter
+# from reportlab.lib import colors
+# from reportlab.pdfbase import pdfmetrics
+# from reportlab.pdfbase.ttfonts import TTFont
 import os
 
 def display_history_window(window, history_log):
@@ -128,44 +128,44 @@ def display_history_window(window, history_log):
             wb.save(file_path)
             messagebox.showinfo("成功", "歷史記錄已匯出至 Excel")
 
-    def export_to_pdf():
-        file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
-        if file_path:
-            c = canvas.Canvas(file_path, pagesize=letter)
-            c.setFont("Helvetica", 10)
-            y = 750
+    # def export_to_pdf(): # 移除 PDF 匯出功能
+    #     file_path = filedialog.asksaveasfilename(defaultextension=".pdf", filetypes=[("PDF files", "*.pdf")])
+    #     if file_path:
+    #         c = canvas.Canvas(file_path, pagesize=letter)
+    #         c.setFont("Helvetica", 10)
+    #         y = 750
             
-            # Get visible data
-            filtered_data = get_visible_data(history_tree)
+    #         # Get visible data
+    #         filtered_data = get_visible_data(history_tree)
             
-            # 註冊字體
-            font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils", "NotoSansCJKtc-Regular.ttf"))
+    #         # 註冊字體
+    #         font_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "utils", "NotoSansCJKtc-Regular.ttf"))
             
-            if not os.path.exists(font_path):
-                messagebox.showerror("錯誤", f"字體檔案不存在:{font_path}，請檢查檔案路徑。")
-                return
-            pdfmetrics.registerFont(TTFont('NotoSansCJKtc-Regular', font_path))
-            c.setFont('NotoSansCJKtc-Regular', 10)
-            c.setFillColor(colors.black)
-            header = columns
-            x_pos = 50
-            for col in header:
-                c.drawString(x_pos, y, col)
-                x_pos += 100
-            y -= 20
+    #         if not os.path.exists(font_path):
+    #             messagebox.showerror("錯誤", f"字體檔案不存在:{font_path}，請檢查檔案路徑。")
+    #             return
+    #         pdfmetrics.registerFont(TTFont('NotoSansCJKtc-Regular', font_path))
+    #         c.setFont('NotoSansCJKtc-Regular', 10)
+    #         c.setFillColor(colors.black)
+    #         header = columns
+    #         x_pos = 50
+    #         for col in header:
+    #             c.drawString(x_pos, y, col)
+    #             x_pos += 100
+    #         y -= 20
 
-            for record in filtered_data:
-                x_pos = 50
-                for i, item in enumerate(record):
-                    c.drawString(x_pos, y, str(item))
-                    x_pos += 100
-                y -= 15
-                if y < 50:
-                    c.showPage()
-                    y = 750
+    #         for record in filtered_data:
+    #             x_pos = 50
+    #             for i, item in enumerate(record):
+    #                 c.drawString(x_pos, y, str(item))
+    #                 x_pos += 100
+    #             y -= 15
+    #             if y < 50:
+    #                 c.showPage()
+    #                 y = 750
 
-            c.save()
-            messagebox.showinfo("成功", "歷史記錄已匯出至 PDF")
+    #         c.save()
+    #         messagebox.showinfo("成功", "歷史記錄已匯出至 PDF")
     
     button_frame = ttk.Frame(history_window)
     button_frame.grid(row=4, column=0, columnspan=4, sticky='ew', padx=10, pady=10)
@@ -173,8 +173,8 @@ def display_history_window(window, history_log):
     export_excel_button = ttk.Button(button_frame, text="匯出 Excel", command=export_to_excel)
     export_excel_button.pack(side="right", padx=5)
 
-    export_pdf_button = ttk.Button(button_frame, text="匯出 PDF", command=export_to_pdf)
-    export_pdf_button.pack(side="right", padx=5)
+    # export_pdf_button = ttk.Button(button_frame, text="匯出 PDF", command=export_to_pdf) # 移除 PDF 匯出按鈕
+    # export_pdf_button.pack(side="right", padx=5)
     
     display_button = ttk.Button(button_frame, text="顯示紀錄", command=display_history)
     display_button.pack(side="right", padx=5)

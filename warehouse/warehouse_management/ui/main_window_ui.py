@@ -5,6 +5,7 @@ from .add_item_ui import add_item_window
 from .remove_item_ui import remove_item_window
 from .history_ui import display_history_window
 from .scrap_item_ui import scrap_item_window
+from .report_window import display_report_window  # 導入 report_window
 # 移除 report 相關的 import
 # from .report_window import ReportWindow
 # from ..report_generator import generate_report
@@ -58,37 +59,45 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
         filter_vars[col].set(value)
         update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree)
 
-    inventory_tree.bind("<Button-1>", lambda event: handle_click(event, inventory_tree))
     def handle_click(event, tree):
-        col_id = tree.identify_column(event.x)
-        if col_id and col_id != "#all":  # 確保點擊的是標題欄
-            col_index = int(col_id[1:]) - 1
-            col = columns[col_index]
-            filtered_data = get_visible_data(inventory_tree)
-            create_filter_menu(col, event, filtered_data)
+        region = tree.identify_region(event.x, event.y) # 修改點：使用 identify_region 判斷點擊區域
+        if region == "heading": # 修改點：判斷點擊區域是否是 heading
+            col_id = tree.identify_column(event.x)
+            if col_id and col_id != "#all":  # 確保點擊的是標題欄
+                col_index = int(col_id[1:]) - 1
+                col = columns[col_index]
+                filtered_data = get_visible_data(inventory_tree)
+                create_filter_menu(col, event, filtered_data)
+                
+    # 修改點：綁定標題欄的點擊事件
+    inventory_tree.bind("<Button-1>", lambda event: handle_click(event, inventory_tree))
+   
 
     # 移除倉庫選擇下拉選單
     # warehouse_label = ttk.Label(window, text="選擇倉庫:")
     # warehouse_label.grid(row=0, column=0, padx=5, pady=5)
     # warehouse_combobox = ttk.Combobox(window, textvariable=warehouse_var, values=["全部","倉庫1", "倉庫2"])
     # warehouse_combobox.grid(row=0, column=1, padx=5, pady=5)
-
-    # 創建按鈕
-    add_button = ttk.Button(window, text="進貨", command=lambda: add_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
-    add_button.grid(row=1, column=0, padx=10, pady=10)
-
-    remove_button = ttk.Button(window, text="出貨", command=lambda: remove_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
-    remove_button.grid(row=1, column=1, padx=10, pady=10)
-
-    history_button = ttk.Button(window, text="歷史紀錄", command=lambda: display_history_window(window, history_log))
-    history_button.grid(row=1, column=2, padx=10, pady=10)
-
-    scrap_button = ttk.Button(window, text="報廢", command=lambda: scrap_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
-    scrap_button.grid(row=1, column=3, padx=10, pady=10)
     
-    # 移除 "生成報表" 按鈕
-    # report_button = ttk.Button(window, text="生成報表", command=lambda: export_report(window, warehouse1, warehouse2, history_log, logged_in_user))
-    # report_button.grid(row=1, column=4, padx=10, pady=10)
+    # 建立按鈕框架
+    button_frame = ttk.Frame(window)
+    button_frame.grid(row=1, column=0, columnspan=4, padx=10, pady=10) # 置中顯示按鈕
+
+    # 創建按鈕 (調整順序)
+    add_button = ttk.Button(button_frame, text="進貨", command=lambda: add_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
+    add_button.pack(side="left", padx=10)
+
+    remove_button = ttk.Button(button_frame, text="出貨", command=lambda: remove_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
+    remove_button.pack(side="left", padx=10)
+    
+    scrap_button = ttk.Button(button_frame, text="報廢", command=lambda: scrap_item_window(window, warehouse1, warehouse2, lambda: update_inventory(window, warehouse1, warehouse2, filter_vars, inventory_tree), save_data, history_log, logged_in_user))
+    scrap_button.pack(side="left", padx=10)
+    
+    history_button = ttk.Button(button_frame, text="歷史紀錄", command=lambda: display_history_window(window, history_log))
+    history_button.pack(side="left", padx=10)
+    
+    report_button = ttk.Button(button_frame, text="生成報表", command=lambda: display_report_window(window, warehouse1, warehouse2, history_log))
+    report_button.pack(side="left", padx=10)
 
     def get_visible_data(tree):
         visible_data = []
@@ -124,7 +133,7 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
             expiry_date_str = item[2]
             expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
             days_left = (expiry_date - datetime.date.today()).days
-            if days_left <= 0:
+            if days_left < 0:
                 inventory_tree.insert('', 'end', values=item, tags=('expired',))
             elif days_left <= 3:
                 inventory_tree.insert('', 'end', values=item, tags=('warning',))
