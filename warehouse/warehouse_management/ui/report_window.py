@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+from tkinter import ttk, messagebox, filedialog, Menu
 import datetime
 from openpyxl import Workbook
 import os
@@ -82,6 +82,35 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
     report_tree.column("剩餘庫存(已過期)", width=100, anchor=tk.CENTER)  # 修改
     report_tree.grid(row=3, column=0, columnspan=7, padx=10, pady=10, sticky='nsew')  # 修改 columnspan
     paned_window.add(report_tree)
+
+    filter_vars = {col: tk.StringVar() for col in columns}
+
+    def create_filter_menu(col, event, filtered_data):
+        filter_menu = Menu(window, tearoff=0)
+        values = sorted(list(set(str(item[i]) for item in filtered_data for i, c in enumerate(columns) if c == col)))
+        
+        filter_menu.add_command(label="全部", command=lambda c=col: set_filter(c, ""))
+        for value in values:
+            filter_menu.add_command(label=value, command=lambda c=col, v=value: set_filter(c, v))
+        
+        filter_menu.tk_popup(event.x_root, event.y_root)
+
+    def set_filter(col, value):
+        filter_vars[col].set(value)
+        generate_report(filter_vars)
+        
+    def handle_click(event, tree):
+        region = tree.identify_region(event.x, event.y) # 修改點：使用 identify_region 判斷點擊區域
+        if region == "heading": # 修改點：判斷點擊區域是否是 heading
+            col_id = tree.identify_column(event.x)
+            if col_id and col_id != "#all":  # 確保點擊的是標題欄
+                col_index = int(col_id[1:]) - 1
+                col = columns[col_index]
+                filtered_data = get_visible_data(report_tree)
+                create_filter_menu(col, event, filtered_data)
+                
+    # 修改點：綁定標題欄的點擊事件
+    report_tree.bind("<Button-1>", lambda event: handle_click(event, report_tree))
     
     def get_visible_data(tree):
         visible_data = []
@@ -89,7 +118,7 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
             visible_data.append(tree.item(item)['values'])
         return visible_data
     
-    def generate_report():
+    def generate_report(filter_vars=None):
         report_tree.delete(*report_tree.get_children())
         start_date_str = start_date_var.get()
         end_date_str = end_date_var.get()
@@ -109,10 +138,13 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
             messagebox.showerror("錯誤", "開始時間不能大於結束時間")
             return
 
-        # 資料篩選與計算
-        report_data = {}
+        # 建立完整的日期列表
+        date_list = []
         current_date = start_date
-
+        while current_date <= end_date:
+          date_list.append(current_date)
+          current_date += datetime.timedelta(days=1)
+        
         all_items = set()
         if selected_warehouse == "倉庫1":
             for item_data in warehouse1.inventory.values():
@@ -126,10 +158,11 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
             for item_data in warehouse2.inventory.values():
                 all_items.add(item_data.name)
 
-        while current_date <= end_date:
-            for item_name in all_items:
-                report_data[(current_date, item_name)] = {"進貨": 0, "出貨": 0, "報廢": 0, "剩餘庫存(未過期)": 0, "剩餘庫存(已過期)": 0}
-            current_date += datetime.timedelta(days=1)
+        # 初始化報表資料
+        report_data = {}
+        for date in date_list:
+          for item_name in all_items:
+              report_data[(date, item_name)] = {"進貨": 0, "出貨": 0, "報廢": 0, "剩餘庫存(未過期)": 0, "剩餘庫存(已過期)": 0}
 
         # 計算每天的進出貨和報廢
         for record in history_log:
@@ -143,14 +176,19 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
                             report_data[(record_date, record["name"])]["出貨"] += record["quantity"]
                         elif record["type"] == "報廢":
                             report_data[(record_date, record["name"])]["報廢"] += record["quantity"]
-
+        
         # 計算剩餘庫存
         for date, item_name in report_data:
-            total_inventory = 0
             expired_inventory = 0
             not_expired_inventory = 0
-            daily_inventory1 = warehouse1.daily_inventory.get(date, {})
-            daily_inventory2 = warehouse2.daily_inventory.get(date, {})
+            daily_inventory1 = {}
+            daily_inventory2 = {}
+            
+            if date in warehouse1.daily_inventory:
+                daily_inventory1 = warehouse1.daily_inventory.get(date,{})
+            if date in warehouse2.daily_inventory:
+                 daily_inventory2 = warehouse2.daily_inventory.get(date,{})
+
 
             if selected_warehouse == "倉庫1" or selected_warehouse == "全部":
                 for item_data in daily_inventory1.values():
@@ -159,6 +197,7 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
                             expired_inventory += item_data.quantity
                         else:
                             not_expired_inventory += item_data.quantity
+
             if selected_warehouse == "倉庫2" or selected_warehouse == "全部":
                 for item_data in daily_inventory2.values():
                     if item_data.name == item_name:
@@ -166,19 +205,38 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
                             expired_inventory += item_data.quantity
                         else:
                             not_expired_inventory += item_data.quantity
+
             report_data[(date, item_name)]["剩餘庫存(未過期)"] = not_expired_inventory
             report_data[(date, item_name)]["剩餘庫存(已過期)"] = expired_inventory
     
+        # Apply filters
+        filtered_data = []
         for (date, item_name), data in report_data.items():
-            report_tree.insert("", "end", values=(
-                date.strftime("%Y-%m-%d"),
-                item_name,
-                data["進貨"],
-                data["出貨"],
-                data["報廢"],
-                data["剩餘庫存(未過期)"],
-                data["剩餘庫存(已過期)"],
-            ))
+            item = (
+                    date.strftime("%Y-%m-%d"),
+                    item_name,
+                    data["進貨"],
+                    data["出貨"],
+                    data["報廢"],
+                    data["剩餘庫存(未過期)"],
+                    data["剩餘庫存(已過期)"],
+            )
+            if all(
+                (not filter_vars[col].get() or str(item[i]) == filter_vars[col].get())
+                for i, col in enumerate(columns) if filter_vars[col].get()
+            ):
+                filtered_data.append(item)
+        
+        for col in columns:
+            heading_text = report_tree.heading(col, "text")
+            if filter_vars[col].get() == "" or filter_vars[col].get() is None:
+                if heading_text.endswith(" (*)"):
+                    report_tree.heading(col, text=heading_text[:-4])
+            elif "(*)" not in heading_text:
+                report_tree.heading(col, text=f"{heading_text} (*)")
+
+        for item in filtered_data:
+            report_tree.insert("", "end", values=item)
 
     def export_to_excel():
         file_path = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel files", "*.xlsx")])
@@ -204,9 +262,9 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
         products = ["橋頭", "橋頭2公升", "漫步"]
 
         # 設定字型檔案路徑
-        font_path = os.path.join(os.getcwd(), "warehouse_management", "utils", "NotoSansTC-Regular.ttf")
+        font_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "utils", "NotoSansTC-Regular.ttf")
         font = fm.FontProperties(fname=font_path)
-        plt.rcParams['font.family'] = "Noto Sans TC"  # 使用查詢到的字體名稱
+        plt.rcParams['font.family'] = font.get_name()
          
         # 創建兩個視窗
         chart_window1 = tk.Toplevel(report_window)
@@ -291,11 +349,11 @@ def display_report_window(window, warehouse1, warehouse2, history_log):
     export_excel_button = ttk.Button(button_frame, text="匯出 Excel", command=export_to_excel)
     export_excel_button.pack(side="right", padx=5)
     
-    display_button = ttk.Button(button_frame, text="顯示報表", command=generate_report)
+    display_button = ttk.Button(button_frame, text="顯示報表", command=lambda: generate_report(filter_vars))
     display_button.pack(side="right", padx=5)
     
     chart_button = ttk.Button(button_frame, text="顯示圖表", command=generate_line_chart)  # 修改按鈕文字
     chart_button.pack(side="right", padx=5)  # 新增
 
     # Initialize the display
-    generate_report()
+    generate_report(filter_vars)

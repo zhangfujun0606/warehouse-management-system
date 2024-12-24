@@ -9,6 +9,7 @@ class Warehouse:
         self.daily_inventory = {}  # 新增 daily_inventory 屬性
 
     def add_item(self, item):
+        item.warehouse = self.name
         key = (item.name, item.expiry_date)
         if key in self.inventory:
             self.inventory[key].quantity += item.quantity

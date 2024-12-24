@@ -1,114 +1,180 @@
-import json
+import sqlite3
 import os
 import datetime
-from ..item import Item
+from warehouse_management.item import Item
+import shutil
 
-def save_data(warehouse1, warehouse2, history_log, daily_inventory1, daily_inventory2):
-    data = {
-        "warehouse1": {
-            "name": warehouse1.name,
-            "inventory": {
-                str(key): {
-                    "name": item.name,
-                    "quantity": item.quantity,
-                    "expiry_date": item.expiry_date.strftime("%Y-%m-%d"),
-                    "note": item.note,
-                }
-                for key, item in warehouse1.inventory.items()
-            },
-            "daily_inventory": {
-                str(date): {
-                    str(key): {
-                        "name": item.name,
-                        "quantity": item.quantity,
-                        "expiry_date": item.expiry_date.strftime("%Y-%m-%d"),
-                        "note": item.note,
-                    }
-                    for key, item in inventory.items()
-                }
-                for date, inventory in daily_inventory1.items()
-            }
-        },
-        "warehouse2": {
-            "name": warehouse2.name,
-            "inventory": {
-                str(key): {
-                    "name": item.name,
-                    "quantity": item.quantity,
-                    "expiry_date": item.expiry_date.strftime("%Y-%m-%d"),
-                     "note": item.note,
-                }
-                for key, item in warehouse2.inventory.items()
-            },
-            "daily_inventory": {
-                str(date): {
-                    str(key): {
-                        "name": item.name,
-                        "quantity": item.quantity,
-                        "expiry_date": item.expiry_date.strftime("%Y-%m-%d"),
-                        "note": item.note,
-                    }
-                    for key, item in inventory.items()
-                }
-                for date, inventory in daily_inventory2.items()
-            }
-        },
-        "history_log": history_log
-    }
-    with open("warehouse_data.json", "w") as f:
-        json.dump(data, f)
+DATABASE_FILE = "warehouse.db"
+BACKUP_FOLDER = "warehouse_backup"
 
-def load_data(warehouse1, warehouse2):
+def initialize_database():
+    """初始化資料庫連線，建立資料庫表格(如果不存在)。"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    # 檢查 `products` 表格是否存在，如果不存在則創建
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS products (
+            name TEXT,
+            quantity INTEGER,
+            expiry_date TEXT,
+            note TEXT,
+            warehouse TEXT,
+            PRIMARY KEY (name, expiry_date, warehouse)
+        )
+    """)
+
+    # 檢查 `history` 表格是否存在，如果不存在則創建
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS history (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            type TEXT,
+            name TEXT,
+            quantity INTEGER,
+            time TEXT,
+            user TEXT,
+            note TEXT,
+            warehouse TEXT
+        )
+    """)    
+
+    # 判斷products是否有資料
+    cursor.execute("SELECT COUNT(*) FROM products")
+    if cursor.fetchone()[0] == 0:
+      # 加入預設商品
+      default_items = [
+          ("橋頭", 0, datetime.date(2024, 12, 31).strftime("%Y-%m-%d"), "預設備註", "倉庫1"),
+          ("橋頭2公升", 0, datetime.date(2024, 12, 25).strftime("%Y-%m-%d"), "預設備註", "倉庫1"),
+          ("漫步", 0, datetime.date(2024, 12, 25).strftime("%Y-%m-%d"), "預設備註", "倉庫1"),
+          ("橋頭", 0, datetime.date(2024, 12, 31).strftime("%Y-%m-%d"), "預設備註", "倉庫2"),
+          ("橋頭2公升", 0, datetime.date(2024, 12, 25).strftime("%Y-%m-%d"), "預設備註", "倉庫2"),
+          ("漫步", 0, datetime.date(2024, 12, 25).strftime("%Y-%m-%d"), "預設備註", "倉庫2"),
+      ]
+      cursor.executemany("INSERT INTO products (name, quantity, expiry_date, note, warehouse) VALUES (?, ?, ?, ?, ?)", default_items)
+
+      conn.commit()
+    #初始化列表
+    warehouse1_items = []
+    warehouse2_items = []
+
+    #讀取產品資料
+    cursor.execute("SELECT name, quantity, expiry_date, note, warehouse FROM products")
+    for row in cursor.fetchall():
+        name, quantity, expiry_date_str, note, warehouse = row
+    conn.close()
+
+def backup_database():
+    """將資料庫檔案備份。"""
+    if not os.path.exists(BACKUP_FOLDER):
+        os.makedirs(BACKUP_FOLDER)
+
+    now = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    backup_file = os.path.join(BACKUP_FOLDER, f"warehouse_{now}.db")    
+    
+    try:
+       shutil.copy2(DATABASE_FILE, backup_file)
+    except Exception as e:
+      print(f"Error backing up database: {e}")
+
+    # 刪除三個月前的備份
+    threshold_date = datetime.datetime.now() - datetime.timedelta(days=90)
+
+    for filename in os.listdir(BACKUP_FOLDER):
+        if filename.startswith("warehouse_") and filename.endswith(".db"):
+            try:
+                file_time = datetime.datetime.strptime(filename[10:-3], "%Y%m%d_%H%M%S")
+                if file_time < threshold_date:
+                  os.remove(os.path.join(BACKUP_FOLDER, filename))
+            except:
+                continue
+
+
+def save_data_to_database(warehouse1, warehouse2, history_log):
+    """將資料儲存到資料庫。"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    #刪除所有產品
+    cursor.execute("DELETE FROM products")
+
+    #儲存產品
+    for item in warehouse1.inventory.values():
+       cursor.execute("INSERT INTO products (name, quantity, expiry_date, note, warehouse) VALUES (?, ?, ?, ?, ?)",
+                      (item.name, item.quantity, item.expiry_date.strftime("%Y-%m-%d"), item.note, warehouse1.name))
+    for item in warehouse2.inventory.values():
+      cursor.execute("INSERT INTO products (name, quantity, expiry_date, note, warehouse) VALUES (?, ?, ?, ?, ?)",
+                     (item.name, item.quantity, item.expiry_date.strftime("%Y-%m-%d"), item.note, warehouse2.name))
+
+    #刪除所有歷史紀錄
+    cursor.execute("DELETE FROM history")
+        
+    #儲存歷史紀錄
+    for record in history_log:
+       cursor.execute("INSERT INTO history (type, name, quantity, time, user, note, warehouse) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                        (record["type"], record["name"], record["quantity"], record["time"], record["user"], record["note"], record["warehouse"]))
+
+    conn.commit()
+    conn.close()
+
+def load_data_from_database(warehouse1, warehouse2):
+    """從資料庫讀取資料。"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+
+    #初始化列表
     history_log = []
+    warehouse1.inventory = {}
+    warehouse2.inventory = {}
+    
+    #讀取產品資料
+    cursor.execute("SELECT name, quantity, expiry_date, note, warehouse FROM products")
+    for row in cursor.fetchall():
+        name, quantity, expiry_date_str, note, warehouse = row
+        expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
+        if warehouse == "倉庫1":
+            warehouse1.add_item(Item(name, quantity, expiry_date, note, warehouse))
+        elif warehouse == "倉庫2":
+            warehouse2.add_item(Item(name, quantity, expiry_date, note, warehouse))
+    conn.close()
+    
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    #讀取歷史紀錄
+    cursor.execute("SELECT type, name, quantity, time, user, note, warehouse FROM history")
+    for row in cursor.fetchall():
+        type, name, quantity, time, user, note, warehouse = row
+        history_log.append({
+            "type": type,
+            "name": name,            
+            "quantity": quantity,
+            "time": time,
+            "user": user,
+            "note": note,
+            "warehouse": warehouse
+            })
+    conn.close()
+    
+    #初始化 daily_inventory
     daily_inventory1 = {}
     daily_inventory2 = {}
-    if os.path.exists("warehouse_data.json"):
-        with open("warehouse_data.json", "r") as f:
-            data = json.load(f)
-
-            # Load warehouse1 data
-            warehouse1.inventory = {}
-            for key_str, item_data in data["warehouse1"]["inventory"].items():
-                try:
-                    key = tuple(eval(key_str))
-                    note = item_data.get("note", "")
-                    warehouse1.inventory[key] = Item(item_data["name"], int(item_data["quantity"]), datetime.datetime.strptime(item_data["expiry_date"], "%Y-%m-%d").date(), note)
-                except Exception as e:
-                    print(f"Error loading warehouse1 item: {e}, data: {item_data}, key: {key_str}")
-            
-            daily_inventory1 = {}
-            for date_str, inventory_data in data["warehouse1"].get("daily_inventory", {}).items():
-                try:
-                    date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-                    daily_inventory1[date] = {}
-                    for key_str, item_data in inventory_data.items():
-                        key = tuple(eval(key_str))
-                        note = item_data.get("note", "")
-                        daily_inventory1[date][key] = Item(item_data["name"], int(item_data["quantity"]), datetime.datetime.strptime(item_data["expiry_date"], "%Y-%m-%d").date(), note)
-                except Exception as e:
-                    print(f"Error loading warehouse1 daily inventory: {e}, data: {inventory_data}, key: {key_str}")
-
-            # Load warehouse2 data
-            warehouse2.inventory = {}
-            for key_str, item_data in data["warehouse2"]["inventory"].items():
-                try:
-                    key = tuple(eval(key_str))
-                    note = item_data.get("note", "")
-                    warehouse2.inventory[key] = Item(item_data["name"], int(item_data["quantity"]), datetime.datetime.strptime(item_data["expiry_date"], "%Y-%m-%d").date(), note)
-                except Exception as e:
-                    print(f"Error loading warehouse2 item: {e}, data: {item_data}, key: {key_str}")
-            
-            daily_inventory2 = {}
-            for date_str, inventory_data in data["warehouse2"].get("daily_inventory", {}).items():
-                try:
-                    date = datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
-                    daily_inventory2[date] = {}
-                    for key_str, item_data in inventory_data.items():
-                        key = tuple(eval(key_str))
-                        note = item_data.get("note", "")
-                        daily_inventory2[date][key] = Item(item_data["name"], int(item_data["quantity"]), datetime.datetime.strptime(item_data["expiry_date"], "%Y-%m-%d").date(), note)
-                except Exception as e:
-                    print(f"Error loading warehouse2 daily inventory: {e}, data: {item_data}, key: {key_str}")
-
-            history_log = data.get("history_log", [])
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    cursor.execute("SELECT name, quantity, expiry_date, note, warehouse FROM products")
+    for row in cursor.fetchall():
+      name, quantity, expiry_date_str, note, warehouse = row
+      expiry_date = datetime.datetime.strptime(expiry_date_str, "%Y-%m-%d").date()
+      if warehouse == "倉庫1":
+          daily_inventory1[datetime.date.today()] =  { (name, expiry_date) :  Item(name, quantity, expiry_date, note, warehouse) }
+      elif warehouse == "倉庫2":
+          daily_inventory2[datetime.date.today()] =  { (name, expiry_date) :  Item(name, quantity, expiry_date, note, warehouse) }
     return history_log, daily_inventory1, daily_inventory2
+  
+def load_data(warehouse1, warehouse2):
+  initialize_database()
+  history_log, daily_inventory1, daily_inventory2 = load_data_from_database(warehouse1, warehouse2)
+  return history_log, daily_inventory1, daily_inventory2
+
+#其他程式碼使用
+def save_data(warehouse1, warehouse2, history_log, daily_inventory1, daily_inventory2):
+    #backup_database()  先不備份，避免產生多個無用備份
+    save_data_to_database(warehouse1, warehouse2, history_log)

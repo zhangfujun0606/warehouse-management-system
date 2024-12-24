@@ -173,6 +173,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
         expiry_date_var.set(values[1])
         quantity_var.set(values[2])
         note_var.set(values[4])
+        warehouse_var.set(values[3])
         
         item_tree.delete(selected_item)
         for item in scrap_items_list:
@@ -213,12 +214,13 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
 
                 # 驗證總報廢數量
                 for name, expiry_date, quantity, warehouse_item, note_item in scrap_items_list:
-                    if (name, expiry_date) not in total_scrap_quantity:
-                        total_scrap_quantity[(name, expiry_date)] = 0
-                    total_scrap_quantity[(name, expiry_date)] += quantity
+                    if (name, expiry_date, warehouse_item) not in total_scrap_quantity:
+                        total_scrap_quantity[(name, expiry_date, warehouse_item)] = 0
+                    total_scrap_quantity[(name, expiry_date, warehouse_item)] += quantity
 
-                for (name, expiry_date), quantity in total_scrap_quantity.items():
+                for (name, expiry_date, warehouse_item), quantity in total_scrap_quantity.items():
                     # 檢查庫存是否足夠
+                    warehouse = warehouse1 if warehouse_item == "倉庫1" else warehouse2
                     item_inventory = next((item for item in warehouse.inventory.values() if item.name == name and item.expiry_date == expiry_date), None)
                     if item_inventory and item_inventory.quantity < quantity:
                         all_success = False
@@ -228,6 +230,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
                 if all_success:
                     # 執行報廢操作
                     for name, expiry_date, quantity, warehouse_item, note_item in scrap_items_list:
+                        warehouse = warehouse1 if warehouse_item == "倉庫1" else warehouse2
                         result = warehouse.remove_item(name, expiry_date, quantity)
                         if not result:
                             all_success = False

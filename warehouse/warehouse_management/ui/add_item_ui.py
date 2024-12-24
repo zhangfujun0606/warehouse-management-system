@@ -1,7 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 import datetime
-from ..item import Item
+from warehouse_management.item import Item
 
 def add_item_window(window, warehouse1, warehouse2, update_inventory, save_data, history_log, logged_in_user):
     add_window = tk.Toplevel(window)
@@ -79,13 +79,15 @@ def add_item_window(window, warehouse1, warehouse2, update_inventory, save_data,
         names = warehouse.get_item_names(include_zero=True)
 
         name_combobox['values'] = names
-        if names:
+        if names and not name_var.get(): #只有在 name_var 沒有值時，才設定 name_var 的預設值。
             name_var.set(names[0]) # Set default item name
         
         expiry_date_combobox['values'] = generate_date_options()
         expiry_date_var.set(datetime.date.today().strftime("%Y-%m-%d")) # Set default date
     
     warehouse_var.trace("w", update_add_item_options)
+    
+    #初始呼叫
     update_add_item_options()
 
     add_items_list = []
@@ -154,7 +156,8 @@ def add_item_window(window, warehouse1, warehouse2, update_inventory, save_data,
         name_var.set(values[0])
         expiry_date_var.set(values[1])
         quantity_var.set(values[2])
-        note_var.set(values[3])
+        warehouse_var.set(values[3])
+        note_var.set(values[4])
 
         item_tree.delete(selected_item)
         for item in add_items_list:
@@ -188,18 +191,22 @@ def add_item_window(window, warehouse1, warehouse2, update_inventory, save_data,
       if messagebox.askyesno("確認", "確定要進貨嗎？"):
         warehouse_name = warehouse_var.get()
         warehouse = warehouse1 if warehouse_name == "倉庫1" else warehouse2
+        
         if add_items_list:
             for item in add_items_list:
-              warehouse.add_item(item)
-              history_log.append({
+              warehouse_item = warehouse1 if item.warehouse == "倉庫1" else warehouse2
+              warehouse_item.add_item(item)
+
+              history_log.append(
+                 {
                   "type": "進貨",
                   "name": item.name,
                   "quantity": item.quantity,
                   "expiry_date": item.expiry_date.strftime("%Y-%m-%d"),
                   "time": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                   "user": logged_in_user,
-                  "note": item.note,
-                  "warehouse": warehouse_name
+                   "note": item.note,
+                   "warehouse": item.warehouse
               })
         update_inventory()
         save_data()

@@ -1,17 +1,23 @@
 import tkinter as tk
 from tkinter import ttk, messagebox, Menu, filedialog
 import datetime
-from .add_item_ui import add_item_window
-from .remove_item_ui import remove_item_window
-from .history_ui import display_history_window
-from .scrap_item_ui import scrap_item_window
-from .report_window import display_report_window  # 導入 report_window
+from warehouse_management.ui.add_item_ui import add_item_window
+from warehouse_management.ui.remove_item_ui import remove_item_window
+from warehouse_management.ui.history_ui import display_history_window
+from warehouse_management.ui.scrap_item_ui import scrap_item_window
+from warehouse_management.ui.report_window import display_report_window  # 導入 report_window
+from warehouse_management.utils.data_handler import load_data
 # 移除 report 相關的 import
 # from .report_window import ReportWindow
 # from ..report_generator import generate_report
 import openpyxl
+import sqlite3
+import shutil
 from openpyxl.styles import Alignment
 import os
+
+DATABASE_FILE = "warehouse.db"
+BACKUP_FOLDER = "warehouse_backup"
 
 def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, logged_in_user):
     inventory_data = []  # Define inventory_data here
@@ -98,6 +104,7 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
     
     report_button = ttk.Button(button_frame, text="生成報表", command=lambda: display_report_window(window, warehouse1, warehouse2, history_log))
     report_button.pack(side="left", padx=10)
+    
 
     def get_visible_data(tree):
         visible_data = []
@@ -119,7 +126,10 @@ def setup_main_window(window, warehouse1, warehouse2, save_data, history_log, lo
                 (not filter_vars[col].get() or str(item[i]) == filter_vars[col].get())
                 for i, col in enumerate(columns) if filter_vars[col].get()
             ):
-                filtered_data.append(item)
+                 try: #修改點
+                    filtered_data.append(item)
+                 except Exception as e:
+                    print(f"發生錯誤: {e}，過濾 {item} 時出現問題")
 
         for col in columns:
             heading_text = inventory_tree.heading(col, "text")
