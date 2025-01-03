@@ -6,7 +6,7 @@ class Warehouse:
     def __init__(self, name):
         self.name = name
         self.inventory = {}
-        self.daily_inventory = {}  # 新增 daily_inventory 屬性
+        # self.daily_inventory = {}  # 移除 daily_inventory 屬性
 
     def add_item(self, item):
         item.warehouse = self.name
@@ -15,7 +15,7 @@ class Warehouse:
             self.inventory[key].quantity += item.quantity
         else:
             self.inventory[key] = item
-        self._record_daily_inventory()
+        # self._record_daily_inventory()  # 移除此行
 
     def remove_item(self, item_name, expiry_date, quantity):
         key = (item_name, expiry_date)
@@ -24,7 +24,7 @@ class Warehouse:
                 self.inventory[key].quantity -= quantity
                 if self.inventory[key].quantity == 0:
                     del self.inventory[key]
-                self._record_daily_inventory()
+                # self._record_daily_inventory() # 移除此行
                 return True
             else:
                 messagebox.showerror("錯誤", "庫存不足")
@@ -65,9 +65,6 @@ class Warehouse:
                 if item.quantity > 0:
                     filtered_dates.append(item.expiry_date)
             return sorted(list(set(filtered_dates)))
-    
-    def _record_daily_inventory(self):
-        today = datetime.date.today()
-        self.daily_inventory[today] = copy.deepcopy(self.inventory)
-        for key, item in self.daily_inventory[today].items():
-            item.warehouse = self.name
+
+    # def _record_daily_inventory(self): # 移除整個方法
+    #     pass

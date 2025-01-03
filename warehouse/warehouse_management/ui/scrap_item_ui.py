@@ -10,17 +10,17 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
     scrap_window.grid_rowconfigure(5, weight=1)
     scrap_window.grid_columnconfigure(0, weight=1)
     scrap_window.grid_columnconfigure(1, weight=1)
-    
+
     # 常數定義
     DATE_RANGE = 365
-    
+
     def create_combobox(parent, label_text, row, column, var, values=None):
         label = ttk.Label(parent, text=label_text)
         label.grid(row=row, column=column, padx=5, pady=5, sticky="e")
         combobox = ttk.Combobox(parent, textvariable=var, values=values)
         combobox.grid(row=row, column=column + 1, padx=5, pady=5, sticky="w")
         return combobox
-    
+
     def create_entry(parent, label_text, row, column, var=None, validate_func=None): # 修改點: 添加 validate_func 參數
         label = ttk.Label(parent, text=label_text)
         label.grid(row=row, column=column, padx=5, pady=5, sticky="e")
@@ -29,7 +29,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
             entry.config(validate="key", validatecommand=(entry.register(validate_func), '%P'))
         entry.grid(row=row, column=column + 1, padx=5, pady=5, sticky="w")
         return entry
-    
+
     def validate_integer(new_value):
       if not new_value:
         return True
@@ -38,7 +38,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
         return True
       except ValueError:
         return False
-    
+
     def validate_positive_integer(new_value): # 修改點: 驗證正整數的函數
       if not new_value:
         return True
@@ -47,7 +47,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
         return value > 0
       except ValueError:
         return False
-    
+
     def get_date_input(date_str):
         try:
             return datetime.datetime.strptime(date_str, "%Y-%m-%d").date()
@@ -70,11 +70,11 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
     # Expiry date selection
     expiry_date_var = tk.StringVar()
     expiry_date_combobox = create_combobox(scrap_window, "有效日期:", 2, 0, expiry_date_var)
-    
+
     # Quantity input
     quantity_var = tk.StringVar()
     quantity_entry = create_entry(scrap_window, "數量:", 3, 0, quantity_var, validate_positive_integer) # 修改點: 使用 validate_positive_integer 驗證
-    
+
     # Note input
     note_var = tk.StringVar()
     note_entry = create_entry(scrap_window, "備註:", 4, 0, note_var)
@@ -104,7 +104,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
         warehouse_name = warehouse_var.get()
         warehouse = warehouse1 if warehouse_name == "倉庫1" else warehouse2
         names = warehouse.get_item_names()
-        
+
         name_combobox['values'] = names
         if names:
             name_var.set(names[0])
@@ -118,7 +118,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
     name_var.trace('w', update_expiry_options)
     warehouse_var.trace("w", update_scrap_item_options)
     update_scrap_item_options()
-    
+
     scrap_items_list = []
 
     columns = ('name', 'expiry_date', 'quantity', 'warehouse', 'note')
@@ -134,22 +134,22 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
     item_tree.column('warehouse', anchor=tk.CENTER)
     item_tree.column('note', anchor=tk.CENTER)
     item_tree.grid(row=5, column=0, columnspan=2, padx=5, pady=5, sticky='nsew')
-    
+
     def add_scrap_item_to_list():
         name = name_var.get()
         expiry_date_str = expiry_date_var.get()
         quantity = quantity_var.get()
         note = note_var.get()
         warehouse = warehouse_var.get()
-        
+
         if not all([name, quantity, expiry_date_str]):
            messagebox.showerror("錯誤", "請填寫所有欄位")
            return
-        
+
         expiry_date = get_date_input(expiry_date_str)
         if not expiry_date:
            return
-                
+
         try:
           quantity = int(quantity)
           if quantity <= 0: # 修改點: 驗證數量是否大於 0
@@ -158,11 +158,11 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
         except ValueError:
           messagebox.showerror("錯誤", "數量請輸入整數")
           return
-          
+
         scrap_items_list.append((name,expiry_date,quantity, warehouse, note))
         item_tree.insert('', 'end', values=(name, expiry_date.strftime('%Y-%m-%d'), quantity, warehouse, note))
         clear_input()
-    
+
     def edit_scrap_item_list():
         selected_item = item_tree.selection()
         if not selected_item:
@@ -174,12 +174,12 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
         quantity_var.set(values[2])
         note_var.set(values[4])
         warehouse_var.set(values[3])
-        
+
         item_tree.delete(selected_item)
         for item in scrap_items_list:
            if item[0] == values[0] and item[1] == get_date_input(values[1]) and item[2] == int(values[2]):
              scrap_items_list.remove(item)
-    
+
     def delete_scrap_item_list():
         selected_item = item_tree.selection()
         if not selected_item:
@@ -190,10 +190,10 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
           if item[0] == values[0] and item[1] == get_date_input(values[1]) and item[2] == int(values[2]):
               scrap_items_list.remove(item)
         item_tree.delete(selected_item)
-    
+
     button_frame = ttk.Frame(scrap_window)
     button_frame.grid(row=6, column=0, columnspan=2, sticky='ew', padx=5, pady=5)
-    
+
     add_to_list_button = ttk.Button(button_frame, text="新增至清單", command=add_scrap_item_to_list)
     add_to_list_button.pack(side="right", padx=5)
 
@@ -208,7 +208,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
             warehouse_name = warehouse_var.get()
             all_success = True
             total_scrap_quantity = {}  # 用來追蹤各個項目的總報廢數量
-            
+
             if scrap_items_list:
                 warehouse = warehouse1 if warehouse_name == "倉庫1" else warehouse2
 
@@ -248,7 +248,7 @@ def scrap_item_window(window, warehouse1, warehouse2, update_inventory, save_dat
 
             if all_success:
                 update_inventory()
-                save_data()
+                save_data() # 呼叫 save_data
                 messagebox.showinfo("成功", "報廢成功")
                 scrap_window.destroy()
             else:
